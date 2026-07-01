@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五行 全対応体系図</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#08080F;color:#F0EDE5;font-family:serif;display:flex;flex-direction:column;align-items:center;padding:20px 12px 40px;min-height:100vh;}
+  h1{font-size:13px;font-weight:300;letter-spacing:0.25em;color:#555;margin-bottom:4px;}
+  h2{font-size:19px;font-weight:300;letter-spacing:0.2em;margin-bottom:4px;}
+  .hint{font-size:11px;color:#3A3A5A;letter-spacing:0.1em;margin-bottom:14px;}
+  svg{max-width:560px;width:100%;}
+  .el-node{cursor:pointer;}
+
+  .info{max-width:560px;width:100%;margin-top:10px;display:none;}
+  .info.visible{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .card{background:#0E0E22;border:1px solid #2A2A4A;border-radius:10px;padding:12px 14px;}
+  .card-title{font-size:10px;letter-spacing:0.15em;color:#3A3A6A;margin-bottom:8px;text-transform:uppercase;}
+
+  .el-header{grid-column:1/-1;display:flex;align-items:center;gap:10px;
+    background:#0E0E22;border:1px solid #2A2A4A;border-radius:10px;padding:12px 16px;}
+  .el-badge{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:22px;font-weight:500;flex-shrink:0;}
+  .el-name{font-size:18px;font-weight:500;}
+  .el-read{font-size:12px;font-weight:300;opacity:0.5;margin-left:6px;}
+  .el-sub{font-size:11px;color:#666;margin-top:2px;}
+
+  .row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;
+    border-bottom:1px solid #12122A;}
+  .row:last-child{border-bottom:none;}
+  .row-label{font-size:10px;color:#444;letter-spacing:0.1em;}
+  .row-val{font-size:13px;font-weight:400;}
+
+  .rel-seiki{color:#C8A000;font-size:12px;line-height:2;}
+  .rel-sokki{color:#555;font-size:12px;line-height:2;}
+  .rel-from{opacity:0.6;}
+
+  @media(max-width:480px){.info.visible{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<h1>ONMYODO · GOGYO · JIKKAN · JUNISHI</h1>
+<h2>陰陽・五行 全対応体系図</h2>
+<p class="hint">五行をクリックして全対応を確認</p>
+
+<svg viewBox="0 0 560 560" id="diagram">
+<defs>
+  <marker id="ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+<circle cx="280" cy="280" r="137" fill="none" stroke="#1A1A3A" stroke-width="0.5"/>
+<circle cx="280" cy="280" r="192" fill="none" stroke="#1A1A3A" stroke-width="0.5"/>
+<circle cx="280" cy="280" r="248" fill="none" stroke="#1A1A3A" stroke-width="0.5"/>
+</svg>
+
+<div class="info" id="info-panel">
+  <div class="el-header" id="el-header"></div>
+  <div class="card" id="card-body">
+    <div class="card-title">身体・感覚</div>
+    <div id="body-rows"></div>
+  </div>
+  <div class="card" id="card-meta">
+    <div class="card-title">自然・方位</div>
+    <div id="meta-rows"></div>
+  </div>
+  <div class="card" id="card-jikkan">
+    <div class="card-title">十干・十二支</div>
+    <div id="jikkan-rows"></div>
+  </div>
+  <div class="card" id="card-rel">
+    <div class="card-title">相生・相克</div>
+    <div id="rel-rows"></div>
+  </div>
+</div>
+
+<script>
+const CX=280,CY=280;
+function xy(r,deg){
+  const rad=(deg-90)*Math.PI/180;
+  return{x:CX+r*Math.cos(rad),y:CY+r*Math.sin(rad)};
+}
+
+const EC={
+  water:{fill:"#0C2A5C",stroke:"#378ADD",text:"#A8C8F8",mid:"#378ADD"},
+  wood: {fill:"#0D2B0D",stroke:"#4DA85E",text:"#9ED89A",mid:"#4DA85E"},
+  fire: {fill:"#3A1208",stroke:"#DD5533",text:"#F8B09A",mid:"#DD5533"},
+  earth:{fill:"#2A1F00",stroke:"#C8A000",text:"#EED870",mid:"#C8A000"},
+  metal:{fill:"#1C1C1C",stroke:"#AAAAAA",text:"#CCCCCC",mid:"#AAAAAA"},
+};
+
+const DATA={
+  water:{nm:"水",rd:"すい",ag:0,  dr:"北",sn:"冬",iro:"黒",
+    zou:"腎",fu:"膀胱",kanj:"恐・驚",kan:"耳",aji:"鹹（塩辛）",tai:"骨・髄",on:"羽"},
+  wood: {nm:"木",rd:"もく",ag:72, dr:"東",sn:"春",iro:"青（緑）",
+    zou:"肝",fu:"胆",  kanj:"怒",     kan:"目",aji:"酸",        tai:"筋・腱",on:"角"},
+  fire: {nm:"火",rd:"か",  ag:144,dr:"南",sn:"夏",iro:"赤",
+    zou:"心",fu:"小腸",kanj:"喜",     kan:"舌",aji:"苦",        tai:"血脈",  on:"徴"},
+  earth:{nm:"土",rd:"ど",  ag:216,dr:"中央",sn:"土用",iro:"黄",
+    zou:"脾",fu:"胃",  kanj:"思",     kan:"口",aji:"甘",        tai:"肌肉",  on:"宮"},
+  metal:{nm:"金",rd:"こん",ag:288,dr:"西",sn:"秋",iro:"白",
+    zou:"肺",fu:"大腸",kanj:"悲・憂", kan:"鼻",aji:"辛",        tai:"皮毛",  on:"商"},
+};
+
+const ELS=Object.entries(DATA).map(([id,d])=>({id,...d}));
+const SK=[["water","wood"],["wood","fire"],["fire","earth"],["earth","metal"],["metal","water"]];
+const KC=[["wood","earth"],["earth","water"],["water","fire"],["fire","metal"],["metal","wood"]];
+const KN=[
+  {n:"壬",e:"water",y:"陽",a:0},  {n:"癸",e:"water",y:"陰",a:36},
+  {n:"甲",e:"wood", y:"陽",a:72}, {n:"乙",e:"wood", y:"陰",a:108},
+  {n:"丙",e:"fire", y:"陽",a:144},{n:"丁",e:"fire", y:"陰",a:180},
+  {n:"戊",e:"earth",y:"陽",a:216},{n:"己",e:"earth",y:"陰",a:252},
+  {n:"庚",e:"metal",y:"陽",a:288},{n:"辛",e:"metal",y:"陰",a:324},
+];
+const JS=[
+  {n:"子",e:"water",y:"陽",a:0,  d:"北"},{n:"丑",e:"earth",y:"陰",a:30, d:""},
+  {n:"寅",e:"wood", y:"陽",a:60, d:""},  {n:"卯",e:"wood", y:"陰",a:90, d:"東"},
+  {n:"辰",e:"earth",y:"陽",a:120,d:""},  {n:"巳",e:"fire", y:"陰",a:150,d:""},
+  {n:"午",e:"fire", y:"陽",a:180,d:"南"},{n:"未",e:"earth",y:"陰",a:210,d:""},
+  {n:"申",e:"metal",y:"陽",a:240,d:""},  {n:"酉",e:"metal",y:"陰",a:270,d:"西"},
+  {n:"戌",e:"earth",y:"陽",a:300,d:""},  {n:"亥",e:"water",y:"陰",a:330,d:""},
+];
+
+const ge=id=>ELS.find(e=>e.id===id);
+let sel=null;
+const svg=document.getElementById("diagram");
+const ns="http://www.w3.org/2000/svg";
+function mk(tag,a={}){const e=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(a))e.setAttribute(k,v);return e;}
+function tx(s,a={}){const t=mk("text",a);t.textContent=s;return t;}
+
+const RE=100,RK=158,RS=212,RD=246,YR=34;
+
+// 相克 lines
+const kcLines=[];
+KC.forEach(([fi,ti])=>{
+  const p1=xy(RE-16,ge(fi).ag),p2=xy(RE-16,ge(ti).ag);
+  const line=mk("line",{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y,
+    stroke:"#333","stroke-dasharray":"3,4","stroke-width":"0.8"});
+  svg.appendChild(line);
+  kcLines.push({line,fi,ti});
+});
+
+// 相生 arrows
+const skPaths=[];
+SK.forEach(([fi,ti])=>{
+  const f=ge(fi),t=ge(ti);
+  let d=t.ag-f.ag; if(d<0)d+=360;
+  const mA=(f.ag+d/2)%360;
+  const p1=xy(RE-8,f.ag),p2=xy(RE-8,t.ag),c=xy(RE-48,mA);
+  const path=mk("path",{d:`M${p1.x} ${p1.y} Q${c.x} ${c.y} ${p2.x} ${p2.y}`,
+    fill:"none",stroke:"#C8A000","stroke-width":"1.5","marker-end":"url(#ag)"});
+  svg.appendChild(path);
+  skPaths.push({path,fi,ti});
+});
+
+// 十二支
+const jiGroups=[];
+JS.forEach(ji=>{
+  const c=EC[ji.e],p=xy(RS,ji.a);
+  const g=mk("g");
+  g.appendChild(mk("circle",{cx:p.x,cy:p.y,r:17,fill:c.fill,stroke:c.stroke,"stroke-width":"0.5"}));
+  g.appendChild(tx(ji.n,{x:p.x,y:p.y,"text-anchor":"middle","dominant-baseline":"central",fill:c.text,"font-size":"14"}));
+  if(ji.d){
+    const dp=xy(RD,ji.a);
+    g.appendChild(tx(ji.d,{x:dp.x,y:dp.y,"text-anchor":"middle","dominant-baseline":"central",
+      fill:c.mid,"font-size":"10","font-weight":"700",opacity:"0.8"}));
+  }
+  svg.appendChild(g);
+  jiGroups.push({g,e:ji.e});
+});
+
+// 十干
+const knGroups=[];
+KN.forEach(kn=>{
+  const c=EC[kn.e],p=xy(RK,kn.a);
+  const g=mk("g");
+  g.appendChild(mk("circle",{cx:p.x,cy:p.y,r:13,fill:c.fill,stroke:c.stroke,"stroke-width":"0.4"}));
+  g.appendChild(tx(kn.n,{x:p.x,y:p.y-3,"text-anchor":"middle","dominant-baseline":"central",fill:c.text,"font-size":"12"}));
+  g.appendChild(tx(kn.y,{x:p.x,y:p.y+9,"text-anchor":"middle","dominant-baseline":"central",fill:c.mid,"font-size":"8",opacity:"0.65"}));
+  svg.appendChild(g);
+  knGroups.push({g,e:kn.e});
+});
+
+// 五行
+const elGroups=[];
+ELS.forEach(el=>{
+  const c=EC[el.id],p=xy(RE,el.ag);
+  const g=mk("g");
+  g.setAttribute("class","el-node");
+  const circle=mk("circle",{cx:p.x,cy:p.y,r:30,fill:c.fill,stroke:c.stroke,"stroke-width":"1.2"});
+  g.appendChild(circle);
+  g.appendChild(tx(el.nm,{x:p.x,y:p.y-7,"text-anchor":"middle","dominant-baseline":"central",
+    fill:c.text,"font-size":"21","font-weight":"500"}));
+  g.appendChild(tx(el.iro,{x:p.x,y:p.y+9,"text-anchor":"middle","dominant-baseline":"central",
+    fill:c.mid,"font-size":"9",opacity:"0.7"}));
+  g.addEventListener("click",()=>toggleSel(el.id));
+  svg.appendChild(g);
+  elGroups.push({g,id:el.id,circle});
+});
+
+// 陰陽
+const yP=`M${CX} ${CY-YR} A${YR} ${YR} 0 0 1 ${CX} ${CY+YR} A${YR/2} ${YR/2} 0 0 0 ${CX} ${CY} A${YR/2} ${YR/2} 0 0 1 ${CX} ${CY-YR}Z`;
+const nP=`M${CX} ${CY-YR} A${YR} ${YR} 0 0 0 ${CX} ${CY+YR} A${YR/2} ${YR/2} 0 0 1 ${CX} ${CY} A${YR/2} ${YR/2} 0 0 0 ${CX} ${CY-YR}Z`;
+const yy=mk("g");
+yy.appendChild(mk("path",{d:yP,fill:"#E8E4DC"}));
+yy.appendChild(mk("path",{d:nP,fill:"#101028"}));
+yy.appendChild(mk("circle",{cx:CX,cy:CY-YR/2,r:6,fill:"#101028"}));
+yy.appendChild(mk("circle",{cx:CX,cy:CY+YR/2,r:6,fill:"#E8E4DC"}));
+yy.appendChild(mk("circle",{cx:CX,cy:CY,r:YR,fill:"none",stroke:"#2A2A5A","stroke-width":"1"}));
+svg.appendChild(yy);
+
+// legend
+const leg=mk("g");
+leg.appendChild(mk("line",{x1:14,y1:543,x2:44,y2:543,stroke:"#C8A000","stroke-width":"1.5","marker-end":"url(#ag)"}));
+leg.appendChild(tx("相生（生む）",{x:50,y:547,fill:"#444","font-size":"10"}));
+leg.appendChild(mk("line",{x1:140,y1:543,x2:170,y2:543,stroke:"#333","stroke-width":"1","stroke-dasharray":"3,4"}));
+leg.appendChild(tx("相克（制す）",{x:176,y:547,fill:"#444","font-size":"10"}));
+leg.appendChild(tx("ノードに五色を表示",{x:280,y:547,"text-anchor":"middle",fill:"#2A2A4A","font-size":"10"}));
+svg.appendChild(leg);
+
+function row(label,val,color){
+  return `<div class="row"><span class="row-label">${label}</span><span class="row-val" style="color:${color||'#CCC'}">${val}</span></div>`;
+}
+
+function toggleSel(id){
+  sel=sel===id?null:id;
+  refresh();
+}
+
+function refresh(){
+  const dim=0.12;
+  elGroups.forEach(({g,id,circle})=>{
+    g.style.opacity=(sel&&id!==sel)?dim:1;
+    circle.setAttribute("stroke-width",(sel===id)?"2.5":"1.2");
+  });
+  knGroups.forEach(({g,e})=>{g.style.opacity=(sel&&e!==sel)?dim:1;});
+  jiGroups.forEach(({g,e})=>{g.style.opacity=(sel&&e!==sel)?dim:1;});
+  skPaths.forEach(({path,fi,ti})=>{
+    const hl=sel&&(fi===sel||ti===sel),dm=sel&&!hl;
+    path.style.opacity=dm?0.05:hl?1:0.6;
+    path.setAttribute("stroke-width",hl?"2.5":"1.5");
+    path.setAttribute("stroke",hl?"#E8C040":"#C8A000");
+  });
+  kcLines.forEach(({line,fi,ti})=>{
+    const hl=sel&&(fi===sel||ti===sel),dm=sel&&!hl;
+    line.style.opacity=dm?0.04:hl?0.9:0.45;
+    line.setAttribute("stroke-width",hl?"1.8":"0.8");
+    line.setAttribute("stroke",hl?"#888":"#333");
+  });
+
+  const panel=document.getElementById("info-panel");
+  if(!sel){panel.classList.remove("visible");return;}
+
+  const e=ge(sel),c=EC[sel];
+  const sTo =SK.find(([a])=>a===sel);
+  const sFrom=SK.find(([,b])=>b===sel);
+  const kTo =KC.find(([a])=>a===sel);
+  const kFrom=KC.find(([,b])=>b===sel);
+  const kans=KN.filter(k=>k.e===sel);
+  const shis=JS.filter(j=>j.e===sel);
+
+  document.getElementById("el-header").innerHTML=
+    `<div class="el-badge" style="background:${c.fill};color:${c.text};border:1px solid ${c.stroke}">${e.nm}</div>
+     <div>
+       <div class="el-name" style="color:${c.text}">${e.nm}<span class="el-read">（${e.rd}）</span></div>
+       <div class="el-sub">${e.dr}　${e.sn}　五色：${e.iro}</div>
+     </div>`;
+
+  document.getElementById("body-rows").innerHTML=
+    row("臓（陰）",e.zou,c.text)+
+    row("腑（陽）",e.fu,c.mid)+
+    row("五情",e.kanj,c.text)+
+    row("五官",e.kan,c.mid)+
+    row("五味",e.aji,c.text)+
+    row("五体",e.tai,c.mid)+
+    row("五音",e.on,c.text);
+
+  document.getElementById("meta-rows").innerHTML=
+    row("方位",e.dr,c.text)+
+    row("季節",e.sn,c.mid)+
+    row("五色",e.iro,c.text)+
+    row("陰陽（十干）","陽："+kans[0].n+"　陰："+kans[1].n,c.mid)+
+    row("十二支",shis.map(j=>j.n).join("・"),c.text);
+
+  document.getElementById("jikkan-rows").innerHTML=
+    kans.map(k=>`<div class="row"><span class="row-label">${k.y}</span><span class="row-val" style="color:${c.text}">${k.n}</span></div>`).join("")+
+    `<div style="border-top:1px solid #12122A;margin:6px 0;"></div>`+
+    shis.map(j=>`<div class="row"><span class="row-label">${j.y}</span><span class="row-val" style="color:${c.mid}">${j.n}${j.d?' ('+j.d+')':''}</span></div>`).join("");
+
+  let rel="";
+  if(sFrom)rel+=`<div class="rel-seiki rel-from">◀ ${ge(sFrom[0]).nm}（${ge(sFrom[0]).rd}）から生まれる</div>`;
+  if(sTo)  rel+=`<div class="rel-seiki">▶ 生む（相生）→ ${ge(sTo[1]).nm}（${ge(sTo[1]).rd}）</div>`;
+  rel+=`<div style="height:6px;"></div>`;
+  if(kFrom)rel+=`<div class="rel-sokki rel-from">◀ ${ge(kFrom[0]).nm}（${ge(kFrom[0]).rd}）に制される</div>`;
+  if(kTo)  rel+=`<div class="rel-sokki">▶ 制す（相克）→ ${ge(kTo[1]).nm}（${ge(kTo[1]).rd}）</div>`;
+  document.getElementById("rel-rows").innerHTML=rel;
+
+  document.querySelectorAll(".card").forEach(c2=>c2.style.borderColor="#2A2A4A");
+  panel.style.setProperty("--accent",c.stroke);
+  panel.classList.add("visible");
+}
+</script>
+</body>
+</html>
